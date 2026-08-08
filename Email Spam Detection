@@ -1,0 +1,155 @@
+print("Student Name : Parveen")
+print("-" * 30)
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, recall_score
+data = {
+    "text": [
+        "Congratulations you won a free prize",
+        "Free entry to win cash now",
+        "You have won a lottery prize",
+        "Claim your free reward now",
+        "Win money by clicking this link",
+        "Urgent you won a free gift",
+        "Get free cash offer today",
+        "Congratulations claim your reward",
+        "Exclusive offer win a prize",
+        "Free lottery ticket available",
+        "Hello how are you",
+        "Can you send me the notes",
+        "Meeting is scheduled tomorrow",
+        "Please call me when you are free",
+        "The project meeting is at 10 AM",
+        "Can you send the report",
+        "See you tomorrow",
+        "Please attend the meeting",
+        "How was your day",
+        "Let us discuss the project"
+    ],
+    "label": [
+        "spam","spam","spam","spam","spam","spam","spam","spam","spam","spam",
+        "ham","ham","ham","ham","ham","ham","ham","ham","ham","ham"
+    ]
+}
+df = pd.DataFrame(data)
+print("EMAIL SPAM CLASSIFICATION")
+print(df.head())
+df["label"] = df["label"].map({"ham": 0, "spam": 1})
+counts = df["label"].value_counts()
+plt.figure(figsize=(6,4))
+plt.bar(["Non-Spam","Spam"], [counts.get(0,0), counts.get(1,0)])
+plt.title("Spam vs Non-Spam Emails")
+plt.xlabel("Email Class")
+plt.ylabel("Number of Emails")
+plt.show()
+X_train, X_test, y_train, y_test = train_test_split(
+    df["text"], df["label"], test_size=0.30, random_state=42, stratify=df["label"]
+)
+vectorizer = TfidfVectorizer(stop_words="english")
+X_train_tfidf = vectorizer.fit_transform(X_train)
+X_test_tfidf = vectorizer.transform(X_test)
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train_tfidf, y_train)
+y_pred = model.predict(X_test_tfidf)
+accuracy = accuracy_score(y_test, y_pred)
+print("\nINITIAL MODEL")
+print("Accuracy:", round(accuracy * 100, 2), "%")
+print(classification_report(y_test, y_pred, target_names=["Non-Spam","Spam"], zero_division=0))
+cm = confusion_matrix(y_test, y_pred)
+TN, FP, FN, TP = cm.ravel()
+print("True Negative :", TN)
+print("False Positive:", FP)
+print("False Negative:", FN)
+print("True Positive :", TP)
+plt.figure(figsize=(6,5))
+plt.imshow(cm, interpolation="nearest")
+plt.title("Initial Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.xticks([0,1], ["Non-Spam","Spam"])
+plt.yticks([0,1], ["Non-Spam","Spam"])
+for i in range(2):
+    for j in range(2):
+        plt.text(j, i, cm[i,j], ha="center", va="center")
+plt.colorbar()
+plt.show()
+probabilities = model.predict_proba(X_test_tfidf)[:,1]
+threshold = 0.30
+y_pred_threshold = (probabilities >= threshold).astype(int)
+threshold_cm = confusion_matrix(y_test, y_pred_threshold)
+TN2, FP2, FN2, TP2 = threshold_cm.ravel()
+threshold_accuracy = accuracy_score(y_test, y_pred_threshold)
+print("\nAFTER THRESHOLD OPTIMIZATION")
+print("Accuracy:", round(threshold_accuracy * 100, 2), "%")
+print("True Negative :", TN2)
+print("False Positive:", FP2)
+print("False Negative:", FN2)
+print("True Positive :", TP2)
+balanced_model = LogisticRegression(class_weight="balanced", max_iter=1000)
+balanced_model.fit(X_train_tfidf, y_train)
+balanced_probabilities = balanced_model.predict_proba(X_test_tfidf)[:,1]
+balanced_pred = (balanced_probabilities >= 0.30).astype(int)
+balanced_cm = confusion_matrix(y_test, balanced_pred)
+TN3, FP3, FN3, TP3 = balanced_cm.ravel()
+balanced_accuracy = accuracy_score(y_test, balanced_pred)
+balanced_recall = recall_score(y_test, balanced_pred, zero_division=0)
+print("\nAFTER BALANCED TRAINING")
+print("Accuracy:", round(balanced_accuracy * 100, 2), "%")
+print("Spam Recall:", round(balanced_recall * 100, 2), "%")
+print("True Negative :", TN3)
+print("False Positive:", FP3)
+print("False Negative:", FN3)
+print("True Positive :", TP3)
+plt.figure(figsize=(6,5))
+plt.imshow(balanced_cm, interpolation="nearest")
+plt.title("Final Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.xticks([0,1], ["Non-Spam","Spam"])
+plt.yticks([0,1], ["Non-Spam","Spam"])
+for i in range(2):
+    for j in range(2):
+        plt.text(j, i, balanced_cm[i,j], ha="center", va="center")
+plt.colorbar()
+plt.show()
+models = ["Initial Model", "Threshold", "Balanced Model"]
+false_negatives = [FN, FN2, FN3]
+plt.figure(figsize=(8,5))
+bars = plt.bar(models, false_negatives)
+plt.title("False Negatives Before and After Optimization")
+plt.xlabel("Model")
+plt.ylabel("False Negatives")
+for bar in bars:
+    height = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2, height, str(int(height)), ha="center", va="bottom")
+plt.show()
+thresholds = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
+recalls = []
+for t in thresholds:
+    prediction = (probabilities >= t).astype(int)
+    recall = recall_score(y_test, prediction, zero_division=0)
+    recalls.append(recall * 100)
+plt.figure(figsize=(8,5))
+plt.plot(thresholds, recalls, marker="o")
+plt.title("Classification Threshold vs Spam Recall")
+plt.xlabel("Classification Threshold")
+plt.ylabel("Spam Recall (%)")
+plt.grid()
+plt.show()
+initial_recall = recall_score(y_test, y_pred, zero_division=0)
+threshold_recall = recall_score(y_test, y_pred_threshold, zero_division=0)
+print("\nFINAL COMPARISON")
+print("Initial Accuracy:", round(accuracy * 100, 2), "%")
+print("Threshold Accuracy:", round(threshold_accuracy * 100, 2), "%")
+print("Balanced Accuracy:", round(balanced_accuracy * 100, 2), "%")
+print("Initial Spam Recall:", round(initial_recall * 100, 2), "%")
+print("Threshold Spam Recall:", round(threshold_recall * 100, 2), "%")
+print("Balanced Spam Recall:", round(balanced_recall * 100, 2), "%")
+print("Initial False Negatives:", FN)
+print("Threshold False Negatives:", FN2)
+print("Balanced False Negatives:", FN3)
+print("\nPROGRAM COMPLETED")
