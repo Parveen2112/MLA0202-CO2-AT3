@@ -1,0 +1,121 @@
+print("Student Name : Parveen")
+print("-" * 30)
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error,mean_squared_error,r2_score
+data={'area':[800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2100,2200,2300,2400,2500,2600,2700],'bedrooms':[2,2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,5,5,5,5],'bathrooms':[1,1,1,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,5,5],'age':[20,18,17,15,14,13,12,10,9,8,7,6,5,5,4,4,3,3,2,1],'distance':[15,14,13,12,11,10,9,9,8,8,7,7,6,6,5,5,4,4,3,2],'parking':[0,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3],'price':[2500000,2800000,3100000,3500000,4000000,4300000,4700000,5000000,5400000,5800000,6200000,6600000,7100000,7500000,8000000,8500000,9000000,9500000,10000000,10800000]}
+df=pd.DataFrame(data)
+print("HOUSE PRICE DATASET")
+print(df.head())
+print("\nDataset Shape:",df.shape)
+print("\nMissing Values:")
+print(df.isnull().sum())
+features=['area','bedrooms','bathrooms','age','distance','parking']
+X=df[features]
+y=df['price']
+print("\nCORRELATION WITH PRICE")
+print(df[features+['price']].corr()['price'].sort_values())
+plt.figure(figsize=(8,5))
+plt.imshow(df[features+['price']].corr(),cmap='coolwarm')
+plt.colorbar()
+plt.xticks(range(len(features)+1),features+['price'],rotation=45)
+plt.yticks(range(len(features)+1),features+['price'])
+plt.title("Feature Correlation Matrix")
+plt.tight_layout()
+plt.show()
+plt.figure(figsize=(8,4))
+plt.boxplot(df['price'])
+plt.title("House Price Outliers")
+plt.ylabel("Price")
+plt.show()
+X_train,X_test,y_train,y_test=train_test_split(X,y,test_size=0.20,random_state=42)
+model=LinearRegression()
+model.fit(X_train,y_train)
+y_pred=model.predict(X_test)
+mae=mean_absolute_error(y_test,y_pred)
+mse=mean_squared_error(y_test,y_pred)
+rmse=np.sqrt(mse)
+r2=r2_score(y_test,y_pred)
+print("\nINITIAL MODEL")
+print("MAE:",round(mae,2))
+print("MSE:",round(mse,2))
+print("RMSE:",round(rmse,2))
+print("R2:",round(r2,2))
+plt.figure(figsize=(7,5))
+plt.scatter(y_test,y_pred)
+plt.xlabel("Actual Price")
+plt.ylabel("Predicted Price")
+plt.title("Actual vs Predicted House Prices")
+plt.show()
+residuals=y_test-y_pred
+plt.figure(figsize=(7,5))
+plt.scatter(y_pred,residuals)
+plt.axhline(y=0,linestyle='--')
+plt.xlabel("Predicted Price")
+plt.ylabel("Residual")
+plt.title("Residual Plot")
+plt.show()
+Q1=df['price'].quantile(0.25)
+Q3=df['price'].quantile(0.75)
+IQR=Q3-Q1
+lower=Q1-1.5*IQR
+upper=Q3+1.5*IQR
+df_clean=df[(df['price']>=lower)&(df['price']<=upper)]
+print("\nOriginal Dataset:",len(df))
+print("Clean Dataset:",len(df_clean))
+X_clean=df_clean[features]
+y_clean=df_clean['price']
+X_train_clean,X_test_clean,y_train_clean,y_test_clean=train_test_split(X_clean,y_clean,test_size=0.20,random_state=42)
+scaler=StandardScaler()
+X_train_scaled=scaler.fit_transform(X_train_clean)
+X_test_scaled=scaler.transform(X_test_clean)
+optimized_model=LinearRegression()
+optimized_model.fit(X_train_scaled,y_train_clean)
+optimized_pred=optimized_model.predict(X_test_scaled)
+optimized_mae=mean_absolute_error(y_test_clean,optimized_pred)
+optimized_mse=mean_squared_error(y_test_clean,optimized_pred)
+optimized_rmse=np.sqrt(optimized_mse)
+optimized_r2=r2_score(y_test_clean,optimized_pred)
+print("\nOPTIMIZED MODEL")
+print("MAE:",round(optimized_mae,2))
+print("MSE:",round(optimized_mse,2))
+print("RMSE:",round(optimized_rmse,2))
+print("R2:",round(optimized_r2,2))
+plt.figure(figsize=(7,5))
+plt.scatter(y_test_clean,optimized_pred)
+plt.xlabel("Actual Price")
+plt.ylabel("Predicted Price")
+plt.title("Optimized Model - Actual vs Predicted")
+plt.show()
+models=['Initial Model','Optimized Model']
+rmse_values=[rmse,optimized_rmse]
+plt.figure(figsize=(7,5))
+bars=plt.bar(models,rmse_values)
+plt.title("RMSE Comparison")
+plt.ylabel("RMSE")
+for bar in bars:
+    height=bar.get_height()
+    plt.text(bar.get_x()+bar.get_width()/2,height,f'{height:.2f}',ha='center',va='bottom')
+plt.show()
+r2_values=[r2,optimized_r2]
+plt.figure(figsize=(7,5))
+bars=plt.bar(models,r2_values)
+plt.title("R2 Score Comparison")
+plt.ylabel("R2 Score")
+for bar in bars:
+    height=bar.get_height()
+    plt.text(bar.get_x()+bar.get_width()/2,height,f'{height:.2f}',ha='center',va='bottom')
+plt.show()
+print("\nFINAL COMPARISON")
+print("Initial RMSE:",round(rmse,2))
+print("Optimized RMSE:",round(optimized_rmse,2))
+print("Initial R2:",round(r2,2))
+print("Optimized R2:",round(optimized_r2,2))
+if optimized_rmse<rmse:
+    print("\nModel performance improved.")
+else:
+    print("\nFurther optimization is required.")
